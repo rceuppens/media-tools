@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paid Reach Estimator</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f3f2ef;
+    --surface: #ffffff;
+    --surface2: #f3f2ef;
+    --border: #e0ddd8;
+    --accent: #0a66c2;
+    --accent2: #0073b1;
+    --accent-light: #e8f0fb;
+    --text: #000000;
+    --text-secondary: #38434f;
+    --muted: #666666;
+    --danger: #cc1016;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .container {
+    position: relative;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 32px;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-light);
+    border-radius: 4px;
+    padding: 4px 10px;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(26px, 4vw, 40px);
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 400;
+    max-width: 480px;
+    line-height: 1.5;
+  }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* Panel */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .panel-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Inputs */
+  .field {
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid #b0b7bf;
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 15px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(10, 102, 194, 0.2);
+  }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat {
+    background: var(--accent-light);
+    border: 1px solid #c5d8f0;
+    border-radius: 6px;
+    padding: 12px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+
+  .stat-value.purple { color: var(--accent2); }
+
+  /* Chart panel */
+  .chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .chart-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .big-reach {
+    text-align: right;
+  }
+
+  .big-reach-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .big-reach-value {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .big-reach-pct {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  canvas {
+    width: 100% !important;
+  }
+
+  /* Saturation warning */
+  .warning {
+    display: none;
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px solid #f5c0c2;
+    border-radius: 4px;
+    background: #fff5f5;
+    font-size: 13px;
+    color: var(--danger);
+    line-height: 1.5;
+  }
+
+  .warning.visible { display: block; }
+
+  /* Milestones */
+  .milestones {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .milestone {
+    text-align: center;
+    padding: 10px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface2);
+  }
+
+  .milestone-pct {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .milestone-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .toggle-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .toggle input { opacity: 0; width: 0; height: 0; }
+
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #b0b7bf;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+
+  .toggle input:checked + .toggle-slider { background: var(--accent); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+  /* CPM section */
+  .cpm-section {
+    display: none;
+    background: var(--accent-light);
+    border: 1px solid #c5d8f0;
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 18px;
+  }
+
+  .cpm-section.visible { display: block; }
+
+  .cpm-section .field { margin-bottom: 12px; }
+  .cpm-section .field:last-child { margin-bottom: 0; }
+
+  .cpm-result {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #c5d8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .cpm-result-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .cpm-result-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .cpm-section label { color: var(--accent2); }
+  .cpm-section input[type="number"] {
+    background: white;
+    border-color: #c5d8f0;
+  }
+
+  .reach-field-locked {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Paid Reach<br><span>Estimator</span></h1>
+    <p class="subtitle">Forecast accumulated unique reach across your campaign before you launch.</p>
+    <p style="margin-top: 10px; font-size: 13px; color: var(--muted);">Designed by Ruben Ceuppens</p>
+  </header>
+
+  <div class="layout">
+    <!-- Inputs -->
+    <div class="panel">
+      <div class="panel-title">Campaign Inputs</div>
+
+      <div class="field">
+        <label>Target Audience Size</label>
+        <div class="field-hint">From Facebook Ads Manager</div>
+        <input type="number" id="audience" value="500000" min="1000" step="1000">
+      </div>
+
+      <!-- Est. Daily Reach toggle -->
+      <div class="toggle-row">
+        <span class="toggle-label">Calculate Est. Post Reach from CPM</span>
+        <label class="toggle">
+          <input type="checkbox" id="cpmToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <!-- CPM calculator (hidden by default) -->
+      <div class="cpm-section" id="cpmSection">
+        <div class="field">
+          <label>Budget per Post (€)</label>
+          <input type="number" id="budgetPerPost" value="500" min="1" step="10">
+        </div>
+        <div class="field">
+          <label>CPM (€) — Cost per 1,000 impressions</label>
+          <input type="number" id="cpm" value="2" min="0.1" step="0.5">
+        </div>
+        <div class="field">
+          <label>Est. Frequency (impressions per person)</label>
+          <input type="number" id="frequency" value="1.5" min="1" step="0.1">
+        </div>
+        <div class="cpm-result">
+          <span class="cpm-result-label">Est. Post Reach →</span>
+          <span class="cpm-result-value" id="cpmReachResult">41,667</span>
+        </div>
+      </div>
+
+      <!-- Manual daily reach (shown when CPM toggle is off) -->
+      <div class="field" id="manualReachField">
+        <label>Est. Post Reach</label>
+        <div class="field-hint">Facebook's estimate for your budget</div>
+        <input type="number" id="dailyReach" value="15000" min="100" step="100">
+      </div>
+
+      <div class="field">
+        <label>Campaign Duration (months)</label>
+        <input type="number" id="durationMonths" value="1" min="1" max="24" step="1">
+      </div>
+
+      <div class="field">
+        <label>Ads per Week</label>
+        <div class="field-hint">Number of distinct ad creatives served weekly</div>
+        <input type="number" id="adsPerWeek" value="3" min="1" max="50">
+      </div>
+
+      <div class="field">
+        <label>Reachability Ceiling — <span id="ceilingDisplay">70%</span></label>
+        <div class="field-hint">Max % of audience realistically reachable (typically 60–80%)</div>
+        <input type="range" id="reachCeiling" value="70" min="10" max="100" step="5"
+          style="width:100%; accent-color: var(--accent); cursor: pointer; margin-top: 4px;">
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Reach Rate / Ad</div>
+          <div class="stat-value" id="stat-rate">3.0%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total Ads (N)</div>
+          <div class="stat-value purple" id="stat-n">30</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <div class="chart-title">Reach Growth by Number of Ads</div>
+        <div class="big-reach">
+          <div class="big-reach-label">Final Reach</div>
+          <div class="big-reach-value" id="final-reach">145,320</div>
+          <div class="big-reach-pct" id="final-pct">29.1% of audience</div>
+        </div>
+      </div>
+
+      <canvas id="reachChart" height="220"></canvas>
+
+      <div class="warning" id="saturation-warning">
+        ⚠ Saturation alert: N × r &gt; 3. You've likely reached 95%+ of your reachable audience. Additional ads yield diminishing new reach.
+      </div>
+
+      <div class="milestones">
+        <div class="milestone">
+          <div class="milestone-pct" id="m25">—</div>
+          <div class="milestone-label">Ads to 25%</div>
+        </div>
+        <div class="milestone">
+          <div class="milestone-pct" id="m50">—</div>
+          <div class="milestone-label">Ads to 50%</div>
+        </div>
+        <div class="milestone">
+          <div class="milestone-pct" id="m75">—</div>
+          <div class="milestone-label">Ads to 75%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : Math.round(n).toLocaleString();
+
+  // CPM toggle
+  const cpmToggle = document.getElementById('cpmToggle');
+  const cpmSection = document.getElementById('cpmSection');
+  const manualReachField = document.getElementById('manualReachField');
+
+  cpmToggle.addEventListener('change', () => {
+    const on = cpmToggle.checked;
+    cpmSection.classList.toggle('visible', on);
+    manualReachField.style.display = on ? 'none' : 'block';
+    if (on) computeCPM();
+    compute();
+  });
+
+  function computeCPM() {
+    const budget = parseFloat(document.getElementById('budgetPerPost').value) || 500;
+    const cpm = parseFloat(document.getElementById('cpm').value) || 8;
+    const freq = parseFloat(document.getElementById('frequency').value) || 1.5;
+    // Est. Daily Reach = (Budget / CPM * 1000) / Frequency
+    const impressions = (budget / cpm) * 1000;
+    const reach = impressions / freq;
+    document.getElementById('cpmReachResult').textContent = fmt(reach);
+    return reach;
+  }
+
+  function getDailyReach() {
+    if (cpmToggle.checked) return computeCPM();
+    return parseFloat(document.getElementById('dailyReach').value) || 15000;
+  }
+
+  // Chart setup
+  const ctx = document.getElementById('reachChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Accumulated Reach',
+        data: [],
+        borderColor: '#0a66c2',
+        backgroundColor: 'rgba(10,102,194,0.08)',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#0a66c2',
+        fill: true,
+        tension: 0.4
+      }, {
+        label: 'Audience Size',
+        data: [],
+        borderColor: '#b0b7bf',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+        tension: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#ffffff',
+          borderColor: '#e0ddd8',
+          borderWidth: 1,
+          titleColor: '#666666',
+          bodyColor: '#000000',
+          titleFont: { family: 'Source Sans 3', size: 12 },
+          bodyFont: { family: 'Source Sans 3', size: 13 },
+          callbacks: {
+            title: items => `Ad #${items[0].label}`,
+            label: item => item.datasetIndex === 0
+              ? ` Reach: ${Math.round(item.raw).toLocaleString()}`
+              : ` Audience: ${Math.round(item.raw).toLocaleString()}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(224,221,216,0.8)' },
+          ticks: { color: '#666666', font: { family: 'Source Sans 3', size: 11 }, maxTicksLimit: 8 },
+          title: { display: true, text: 'Number of Ads', color: '#666666', font: { family: 'Source Sans 3', size: 12 } }
+        },
+        y: {
+          grid: { color: 'rgba(224,221,216,0.8)' },
+          ticks: {
+            color: '#666666',
+            font: { family: 'Source Sans 3', size: 11 },
+            callback: v => fmt(v)
+          },
+          title: { display: true, text: 'Unique People Reached', color: '#666666', font: { family: 'Source Sans 3', size: 12 } }
+        }
+      }
+    }
+  });
+
+  function compute() {
+    const audience = parseFloat(document.getElementById('audience').value) || 500000;
+    const dailyReach = getDailyReach();
+    const months = parseFloat(document.getElementById('durationMonths').value) || 1;
+    const adsPerWeek = parseInt(document.getElementById('adsPerWeek').value) || 3;
+    const ceilingPct = Math.min(parseFloat(document.getElementById('reachCeiling').value) || 70, 100) / 100;
+
+    // Max reachable audience after ceiling correction
+    const maxReachable = audience * ceilingPct;
+
+    // Convert months to weeks
+    const weeks = months * 4.33;
+    const N = Math.round(weeks * adsPerWeek);
+
+    // Reach rate per ad relative to full audience
+    const r = Math.min(dailyReach / audience, 0.9999);
+
+    // Update stats
+    document.getElementById('stat-rate').textContent = (r * 100).toFixed(2) + '%';
+    document.getElementById('stat-n').textContent = N;
+
+    // Build curve
+    const points = Math.min(N, 200);
+    const step = Math.max(N / points, 1);
+    const labels = [];
+    const data = [];
+    const audienceLine = [];
+
+    let m25 = null, m50 = null, m75 = null;
+
+    for (let i = 1; i <= points; i++) {
+      const n = Math.round(i * step);
+      const reach = maxReachable * (1 - Math.pow(1 - r, n));
+      const pct = reach / audience;
+      labels.push(n);
+      data.push(reach);
+      audienceLine.push(audience);
+
+      if (!m25 && pct >= 0.25) m25 = n;
+      if (!m50 && pct >= 0.50) m50 = n;
+      if (!m75 && pct >= 0.75) m75 = n;
+    }
+
+    const finalReach = maxReachable * (1 - Math.pow(1 - r, N));
+    const finalPct = finalReach / audience;
+
+    document.getElementById('final-reach').textContent = fmt(finalReach);
+    document.getElementById('final-pct').textContent = (finalPct * 100).toFixed(1) + '% of audience';
+
+    document.getElementById('m25').textContent = m25 || '—';
+    document.getElementById('m50').textContent = m50 || '—';
+    document.getElementById('m75').textContent = m75 || '—';
+
+    const saturation = N * r;
+    document.getElementById('saturation-warning').classList.toggle('visible', saturation > 3);
+
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.data.datasets[1].data = audienceLine;
+    chart.update('none');
+  }
+
+  // Wire up all inputs
+  ['audience','dailyReach','durationMonths','adsPerWeek','reachCeiling'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      if (id === 'reachCeiling') {
+        document.getElementById('ceilingDisplay').textContent = document.getElementById('reachCeiling').value + '%';
+      }
+      compute();
+    });
+  });
+  ['budgetPerPost','cpm','frequency'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => { computeCPM(); compute(); });
+  });
+
+  compute();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Paid Reach Estimator
 
-A lightweight, browser-based tool to forecast accumulated unique reach across a paid Facebook campaign — before you launch.
+A lightweight, browser-based tool to forecast accumulated unique reach across a paid Facebook campaign, before you launch.
 
 Built as a single HTML file with no dependencies beyond Chart.js.
 
